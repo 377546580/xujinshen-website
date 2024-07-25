@@ -28,6 +28,8 @@
         const tankHeight = 40;
         const bulletWidth = 5;
         const bulletHeight = 10;
+        const enemyWidth = 40;
+        const enemyHeight = 40;
         let tankX = canvas.width / 2 - tankWidth / 2;
         let tankY = canvas.height - tankHeight - 10;
         let bulletX = tankX + tankWidth / 2 - bulletWidth / 2;
@@ -35,23 +37,76 @@
         let bulletFired = false;
         const tankSpeed = 5;
         const bulletSpeed = 7;
+        let enemies = [];
+        let playerHealth = 3;
+        const enemySpeed = 2;
+        const enemyBulletSpeed = 4;
+        let enemyBullets = [];
 
-        function drawTank() {
-            context.fillStyle = 'green';
-            context.fillRect(tankX, tankY, tankWidth, tankHeight);
+        function drawTank(x, y, color = 'green') {
+            context.fillStyle = color;
+            context.fillRect(x, y, tankWidth, tankHeight);
         }
 
-        function drawBullet() {
-            if (bulletFired) {
-                context.fillStyle = 'red';
-                context.fillRect(bulletX, bulletY, bulletWidth, bulletHeight);
-                bulletY -= bulletSpeed;
-                if (bulletY < 0) {
+        function drawBullet(x, y, color = 'red') {
+            context.fillStyle = color;
+            context.fillRect(x, y, bulletWidth, bulletHeight);
+        }
+
+        function drawEnemies() {
+            context.fillStyle = 'blue';
+            for (let i = 0; i < enemies.length; i++) {
+                let enemy = enemies[i];
+                drawTank(enemy.x, enemy.y, 'blue');
+                enemy.y += enemySpeed;
+
+                // Enemy shooting logic
+                if (Math.random() < 0.01) {
+                    enemyBullets.push({x: enemy.x + tankWidth / 2 - bulletWidth / 2, y: enemy.y + tankHeight});
+                }
+
+                // Check for collision with bullet
+                if (bulletFired && bulletX < enemy.x + enemyWidth && bulletX + bulletWidth > enemy.x && bulletY < enemy.y + enemyHeight && bulletY + bulletHeight > enemy.y) {
+                    enemies.splice(i, 1);
                     bulletFired = false;
                     bulletY = tankY;
                     bulletX = tankX + tankWidth / 2 - bulletWidth / 2;
                 }
+
+                // Check for enemy reaching the bottom
+                if (enemy.y > canvas.height) {
+                    enemies.splice(i, 1);
+                }
             }
+        }
+
+        function drawEnemyBullets() {
+            for (let i = 0; i < enemyBullets.length; i++) {
+                let bullet = enemyBullets[i];
+                drawBullet(bullet.x, bullet.y, 'black');
+                bullet.y += enemyBulletSpeed;
+
+                // Check for collision with player
+                if (bullet.x < tankX + tankWidth && bullet.x + bulletWidth > tankX && bullet.y < tankY + tankHeight && bullet.y + bulletHeight > tankY) {
+                    playerHealth -= 1;
+                    enemyBullets.splice(i, 1);
+                    if (playerHealth <= 0) {
+                        alert('Game Over!');
+                        document.location.reload();
+                    }
+                }
+
+                // Remove bullets that are off the screen
+                if (bullet.y > canvas.height) {
+                    enemyBullets.splice(i, 1);
+                }
+            }
+        }
+
+        function spawnEnemy() {
+            let enemyX = Math.random() * (canvas.width - enemyWidth);
+            let enemyY = -enemyHeight;
+            enemies.push({x: enemyX, y: enemyY});
         }
 
         function clearCanvas() {
@@ -60,8 +115,12 @@
 
         function gameLoop() {
             clearCanvas();
-            drawTank();
-            drawBullet();
+            drawTank(tankX, tankY);
+            drawBullet(bulletX, bulletY);
+            drawEnemies();
+            drawEnemyBullets();
+            context.fillStyle = 'white';
+            context.fillText(`Health: ${playerHealth}`, 10, 20);
             requestAnimationFrame(gameLoop);
         }
 
@@ -75,10 +134,23 @@
                 if (!bulletFired) bulletX += tankSpeed;
             }
             if (event.key === ' ') {
-                bulletFired = true;
+                if (!bulletFired) {
+                    bulletFired = true;
+                }
             }
         });
 
+        setInterval(spawnEnemy, 2000);
+        setInterval(function() {
+            if (bulletFired) {
+                bulletY -= bulletSpeed;
+                if (bulletY < 0) {
+                    bulletFired = false;
+                    bulletY = tankY;
+                    bulletX = tankX + tankWidth / 2 - bulletWidth / 2;
+                }
+            }
+        }, 1000 / 60);
         gameLoop();
     </script>
 </body>
